@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "nasa-cli"
-version = "0.1.0"
+version = "0.2.0"
 description = "Command Line Interface made with Typer and Python for NASA API."
 authors = ["Guillermo Valdes <guillermo.valdes@pjecz.gob.mx>"]
 license = "AGPL3"
