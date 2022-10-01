@@ -2,12 +2,20 @@
 APOD: Astronomy Picture of the Day
 """
 from datetime import date, datetime, timedelta
+import os
 
+from dotenv import load_dotenv
 import rich
 import typer
 
+load_dotenv()
+
+API_KEY = os.getenv("API_KEY", "")
+TIMEOUT = int(os.getenv("TIMEOUT", 12))
+
 app = typer.Typer()
 
+BASE_URL = "https://api.nasa.gov/planetary/apod"
 HOY = date.today().strftime("%Y-%m-%d")
 
 
@@ -17,6 +25,10 @@ def bajar(
 ):
     """Bajar el Astronomy Picture of the Day"""
     rich.print(f"[green]Bajar el Astronomy Picture of the Day[/green] de [blue]{fecha}[/blue]")
+
+    # Mostrar la URL a solicitar
+    url = f"{BASE_URL}?api_key={API_KEY}&date={fecha}"
+    rich.print(f"[blue]{url}[/blue]")
 
 
 @app.command()
@@ -46,7 +58,7 @@ def bajar_rango(
             fecha,
             f"Foto del {fecha}",
             "text/html",
-            f"https://noexiste.com/{fecha}.html",
+            f"{BASE_URL}?api_key={API_KEY}&date={fecha}",
         )
         tiempo += timedelta(days=1)
 
