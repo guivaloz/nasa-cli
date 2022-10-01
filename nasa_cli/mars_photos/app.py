@@ -1,23 +1,47 @@
 """
 Mars Rover Photos
 """
-import os
+from pathlib import Path
 
-from dotenv import load_dotenv
+import requests
 import rich
 import typer
+from unidecode import unidecode
 
-load_dotenv()
-
-API_KEY = os.getenv("API_KEY", "")
-TIMEOUT = int(os.getenv("TIMEOUT", 12))
+from .settings import get_settings
 
 app = typer.Typer()
 
-BASE_URL = "https://api.nasa.gov/mars-photos/api/v1/rovers/curiosity/photos"
-
 
 @app.command()
-def bajar():
-    """Bajar fotos del Mars Rover"""
-    rich.print("[green]Bajar fotos del Mars Rover[/green]")
+def mostrar(
+    page: int = 1,
+    sol: int = 0,
+):
+    """Mostrar imagenes del Mars Rover"""
+    rich.print("Mostrar imagenes del [blue]Mars Rover[/blue]")
+
+    # Cargar configuración
+    settings = get_settings()
+
+    # Definir los parametros para la solicitud
+    parametros = {
+        "api_key": settings.api_key,
+        "page": page,
+        "sol": sol,
+    }
+
+    # Solicitar a la API las imagenes
+    try:
+        respuesta = requests.get(settings.base_url, params=parametros, timeout=settings.timeout)
+        respuesta.raise_for_status()
+        datos = respuesta.json()
+    except requests.exceptions.HTTPError as error:
+        rich.print(f"[red]Error {error.response.status_code}[/red]")
+        rich.print(error.response.text)
+    except requests.exceptions.RequestException as error:
+        rich.print("[red]Error[/red]")
+        rich.print(error)
+
+    # Mostrar los datos
+    rich.pretty.pprint(datos)
