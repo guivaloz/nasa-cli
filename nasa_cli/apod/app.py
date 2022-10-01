@@ -1,11 +1,13 @@
 """
 APOD: Astronomy Picture of the Day
 """
-from datetime import date, datetime, timedelta
+from datetime import date
+from pathlib import Path
 
 import requests
 import rich
 import typer
+from unidecode import unidecode
 
 from .settings import get_settings
 
@@ -25,14 +27,42 @@ def bajar(
     settings = get_settings()
 
     # Mostrar la URL de la foto
-    url = f"{settings.base_url}?api_key={settings.api_key}&date={fecha}"
-    respuesta = requests.get(url, timeout=settings.timeout)
-    if respuesta.status_code == 200:
+    try:
+        url = f"{settings.base_url}?api_key={settings.api_key}&date={fecha}"
+        respuesta = requests.get(url, timeout=settings.timeout)
         datos = respuesta.json()
-        rich.print(f"[blue]{datos['url']}[/blue]")
-    else:
-        rich.print(f"[red]Error {respuesta.status_code}[/red]")
-        rich.print(respuesta.text)
+    except requests.exceptions.HTTPError as error:
+        rich.print(f"[red]Error {error.response.status_code}[/red]")
+        rich.print(error.response.text)
+    except requests.exceptions.RequestException as error:
+        rich.print("[red]Error[/red]")
+        rich.print(error)
+
+    # Si es una imagen
+    if datos["media_type"] == "image":
+
+        # Definir el nombre del archivo
+        nombre = unidecode(datos["title"].lower().replace(" ", "_"))
+        extension = datos["url"].split(".")[-1]
+        archivo = Path(f"{nombre}.{extension}")
+
+        # Si ya existe el archivo, no hacer nada
+        if archivo.exists():
+            rich.print(f"El archivo [yellow]{archivo}[/yellow] ya existe")
+            typer.Exit(0)
+
+        # Bajar la imagen
+        try:
+            respuesta = requests.get(datos["url"], timeout=settings.timeout)
+            with open(archivo, "wb") as f:
+                f.write(respuesta.content)
+            rich.print(f"Archivo [green]{archivo}[/green] guardado")
+        except requests.exceptions.HTTPError as error:
+            rich.print(f"[red]Error {error.response.status_code}[/red]")
+            rich.print(error.response.text)
+        except requests.exceptions.RequestException as error:
+            rich.print("[red]Error[/red]")
+            rich.print(error)
 
 
 @app.command()
@@ -74,6 +104,33 @@ def bajar_rango(
 
     # Bucle en los datos de la respuesta de la API
     for dato in datos:
+
+        # Si es una imagen
+        if dato["media_type"] == "image":
+
+            # Definir el nombre del archivo
+            nombre = unidecode(dato["title"].lower().replace(" ", "_"))
+            extension = dato["url"].split(".")[-1]
+            archivo = Path(f"{nombre}.{extension}")
+
+            # Si ya existe el archivo, no hacer nada
+            if archivo.exists():
+                rich.print(f"El archivo [yellow]{archivo}[/yellow] ya existe")
+                continue
+
+            # Bajar la imagen
+            try:
+                respuesta = requests.get(dato["url"], timeout=settings.timeout)
+                respuesta.raise_for_status()
+                with open(archivo, "wb") as f:
+                    f.write(respuesta.content)
+                rich.print(f"Archivo [green]{archivo}[/green] guardado...")
+            except requests.exceptions.HTTPError as error:
+                rich.print(f"[red]Error {error.response.status_code}[/red]")
+                rich.print(error.response.text)
+            except requests.exceptions.RequestException as error:
+                rich.print("[red]Error[/red]")
+                rich.print(error)
 
         # Agregar renglon a la tabla
         tabla.add_row(
