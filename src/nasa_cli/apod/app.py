@@ -1,42 +1,45 @@
 """
 APOD: Astronomy Picture of the Day
 """
+
 from datetime import date
 from pathlib import Path
 
 import requests
-import rich
-import typer
+from rich.console import Console
+from rich.table import Table
+from typer import Typer, Option
 from unidecode import unidecode
 
 from .settings import get_settings
 
-app = typer.Typer()
+app = Typer()
 
 HOY = date.today().strftime("%Y-%m-%d")
 
 
 @app.command()
 def bajar(
-    fecha: str = typer.Option(HOY, help="Fecha de la foto"),
+    fecha: str = Option(HOY, help="Fecha de la foto"),
 ):
     """Bajar el Astronomy Picture of the Day"""
-    rich.print(f"Bajar el [blue]Astronomy Picture of the Day[/blue] de [green]{fecha}[/green]")
+    console = Console()
+    console.print(f"Bajar el [blue]Astronomy Picture of the Day[/blue] de [green]{fecha}[/green]")
 
     # Cargar configuración
     settings = get_settings()
 
     # Mostrar la URL de la foto
     try:
-        url = f"{settings.base_url}?api_key={settings.api_key}&date={fecha}"
-        respuesta = requests.get(url, timeout=settings.timeout)
+        url = f"{settings.BASE_URL}?api_key={settings.API_KEY}&date={fecha}"
+        respuesta = requests.get(url, timeout=settings.TIMEOUT)
         datos = respuesta.json()
     except requests.exceptions.HTTPError as error:
-        rich.print(f"[red]Error {error.response.status_code}[/red]")
-        rich.print(error.response.text)
+        console.print(f"[red]Error {error.response.status_code}[/red]")
+        console.print(error.response.text)
     except requests.exceptions.RequestException as error:
-        rich.print("[red]Error[/red]")
-        rich.print(error)
+        console.print("[red]Error[/red]")
+        console.print(error)
 
     # Si es una imagen
     if datos["media_type"] == "image":
@@ -48,55 +51,56 @@ def bajar(
 
         # Si ya existe el archivo, no hacer nada
         if archivo.exists():
-            rich.print(f"El archivo [yellow]{archivo}[/yellow] ya existe")
-            typer.Exit(0)
+            console.print(f"El archivo [yellow]{archivo}[/yellow] ya existe")
+            return
 
         # Bajar la imagen
         try:
-            respuesta = requests.get(datos["url"], timeout=settings.timeout)
+            respuesta = requests.get(datos["url"], timeout=settings.TIMEOUT)
             with open(archivo, "wb") as f:
                 f.write(respuesta.content)
-            rich.print(f"Archivo [green]{archivo}[/green] guardado")
+            console.print(f"Archivo [green]{archivo}[/green] guardado")
         except requests.exceptions.HTTPError as error:
-            rich.print(f"[red]Error {error.response.status_code}[/red]")
-            rich.print(error.response.text)
+            console.print(f"[red]Error {error.response.status_code}[/red]")
+            console.print(error.response.text)
         except requests.exceptions.RequestException as error:
-            rich.print("[red]Error[/red]")
-            rich.print(error)
+            console.print("[red]Error[/red]")
+            console.print(error)
 
 
 @app.command()
 def bajar_rango(
-    desde: str = typer.Option(HOY, help="Fecha de inicio AAAA-MM-DD"),
-    hasta: str = typer.Option(HOY, help="Fecha de termino AAAA-MM-DD"),
+    desde: str = Option(HOY, help="Fecha de inicio AAAA-MM-DD"),
+    hasta: str = Option(HOY, help="Fecha de termino AAAA-MM-DD"),
 ):
     """Bajar un rango de imagenes del Astronomy Picture of the Day"""
-    rich.print(f"Bajar las imagenes [blue]Astronomy Picture of the Day[/blue] del [green]{desde}[/green] al [green]{hasta}[/green]")
+    console = Console()
+    console.print(f"Bajar las imagenes [blue]Astronomy Picture of the Day[/blue] del [green]{desde}[/green] al [green]{hasta}[/green]")
 
     # Cargar configuración
     settings = get_settings()
 
     # Definir los parametros para la solicitud
     parametros = {
-        "api_key": settings.api_key,
+        "api_key": settings.API_KEY,
         "start_date": desde,
         "end_date": hasta,
     }
 
     # Solicitar a la API las imagenes
     try:
-        respuesta = requests.get(settings.base_url, params=parametros, timeout=settings.timeout)
+        respuesta = requests.get(settings.BASE_URL, params=parametros, timeout=settings.TIMEOUT)
         respuesta.raise_for_status()
         datos = respuesta.json()
     except requests.exceptions.HTTPError as error:
-        rich.print(f"[red]Error {error.response.status_code}[/red]")
-        rich.print(error.response.text)
+        console.print(f"[red]Error {error.response.status_code}[/red]")
+        console.print(error.response.text)
     except requests.exceptions.RequestException as error:
-        rich.print("[red]Error[/red]")
-        rich.print(error)
+        console.print("[red]Error[/red]")
+        console.print(error)
 
     # Elaborar tabla
-    tabla = rich.table.Table()
+    tabla = Table()
     tabla.add_column("Fecha", justify="center")
     tabla.add_column("Titulo", justify="left")
     tabla.add_column("Media", justify="left")
@@ -115,22 +119,22 @@ def bajar_rango(
 
             # Si ya existe el archivo, no hacer nada
             if archivo.exists():
-                rich.print(f"El archivo [yellow]{archivo}[/yellow] ya existe")
+                console.print(f"El archivo [yellow]{archivo}[/yellow] ya existe")
                 continue
 
             # Bajar la imagen
             try:
-                respuesta = requests.get(dato["url"], timeout=settings.timeout)
+                respuesta = requests.get(dato["url"], timeout=settings.TIMEOUT)
                 respuesta.raise_for_status()
                 with open(archivo, "wb") as f:
                     f.write(respuesta.content)
-                rich.print(f"Archivo [green]{archivo}[/green] guardado...")
+                console.print(f"Archivo [green]{archivo}[/green] guardado...")
             except requests.exceptions.HTTPError as error:
-                rich.print(f"[red]Error {error.response.status_code}[/red]")
-                rich.print(error.response.text)
+                console.print(f"[red]Error {error.response.status_code}[/red]")
+                console.print(error.response.text)
             except requests.exceptions.RequestException as error:
-                rich.print("[red]Error[/red]")
-                rich.print(error)
+                console.print("[red]Error[/red]")
+                console.print(error)
 
         # Agregar renglon a la tabla
         tabla.add_row(
@@ -141,5 +145,4 @@ def bajar_rango(
         )
 
     # Mostrar tabla
-    consola = rich.console.Console()
-    consola.print(tabla)
+    console.print(tabla)
